@@ -12,24 +12,7 @@ object Main {
       Console.Live,
       PlatformLive.Default)
 
-    sys.exit(bootstrapRuntime.unsafeRun(prg))
-  }
-
-  val prg: RIO[Console, Int] = {
-
-    val initialization = for {
-      httpClient <- HttpClient.apply(10)
-    } yield httpClient
-
-    initialization.use { (anHttpClient: HttpClient) =>
-      val runtime = Runtime[AppEnvironment](
-        new InitializedHttpClient with AccountGateway.Live with Console.Live {
-          override val httpClient: InitializedHttpClient.Service[Any] = InitializedHttpClient.live(anHttpClient)
-        },
-        PlatformLive.Default
-      )
-      ZIO(runtime.unsafeRun(program))
-    }
+    sys.exit(bootstrapRuntime.unsafeRun(completeProgram))
   }
 
   type AppEnvironment = AccountGateway with InitializedHttpClient with Console
@@ -43,4 +26,15 @@ object Main {
       } yield 1
     }
 
+  val completeProgram: ZIO[Console, Throwable, Int] = {
+    HttpClient(10).use { anHttpClient =>
+      val liveEnv: AppEnvironment = newLiveEnv(anHttpClient)
+      program.provide(liveEnv)
+    }
+  }
+
+  private def newLiveEnv(anHttpClient: HttpClient): AppEnvironment =
+    new InitializedHttpClient with AccountGateway.Live with Console.Live {
+      override val httpClient: InitializedHttpClient.Service[Any] = InitializedHttpClient.live(anHttpClient)
+    }
 }
