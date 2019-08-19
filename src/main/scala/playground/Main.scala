@@ -1,19 +1,16 @@
 package playground
 
 import zio.console.Console
-import zio.internal.PlatformLive
-import zio.{RIO, Runtime, Task, ZIO}
+import zio.{RIO, ZIO, console}
 
 
-object Main {
+object Main extends zio.App {
 
-  def main(args: Array[String]): Unit = {
-    val bootstrapRuntime = Runtime[Console](
-      Console.Live,
-      PlatformLive.Default)
-
-    sys.exit(bootstrapRuntime.unsafeRun(completeProgram))
-  }
+  override def run(args: List[String]): ZIO[Main.Environment, Nothing, Int] =
+    completeProgram.foldM[Main.Environment, Nothing, Int](
+      failure = ex => console.putStrLn(s"error: ${ex.getMessage}").map(_ => 1),
+      success = ZIO.succeed
+    )
 
   type AppEnvironment = AccountGateway with InitializedHttpClient with Console
   type AppTask[A] = RIO[AppEnvironment, A]
@@ -23,7 +20,7 @@ object Main {
       for {
         _ <- env.accountGateway.createAccount("my@email", "my password")
         _ <- env.accountGateway.login("my@email", "my password")
-      } yield 1
+      } yield 0
     }
 
   val completeProgram: ZIO[Console, Throwable, Int] = {
