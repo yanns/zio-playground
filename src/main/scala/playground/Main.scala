@@ -2,22 +2,38 @@ package playground
 
 import zio.console.Console
 import zio.internal.PlatformLive
-import zio.{RIO, Runtime, ZIO}
+import zio.{RIO, Runtime, Task, ZIO}
 
 
 object Main {
 
-  type AppEnvironment = AccountGateway with InitializedHttpClient with Console
-  type AppTask[A] = RIO[AppEnvironment, A]
-
   def main(args: Array[String]): Unit = {
-    val myRuntime = Runtime[AppEnvironment](
-      new AccountGateway.Live
-      with Console.Live,
+    val bootstrapRuntime = Runtime[Console](
+      Console.Live,
       PlatformLive.Default)
 
-    myRuntime.unsafeRun(program)
+    sys.exit(bootstrapRuntime.unsafeRun(prg))
   }
+
+  val prg: RIO[Console, Int] = {
+
+    val initialization = for {
+      httpClient <- HttpClient.apply(10)
+    } yield httpClient
+
+    initialization.use { (anHttpClient: HttpClient) =>
+      val runtime = Runtime[AppEnvironment](
+        new InitializedHttpClient with AccountGateway.Live with Console.Live {
+          override val httpClient: InitializedHttpClient.Service[Any] = InitializedHttpClient.live(anHttpClient)
+        },
+        PlatformLive.Default
+      )
+      ZIO(runtime.unsafeRun(program))
+    }
+  }
+
+  type AppEnvironment = AccountGateway with InitializedHttpClient with Console
+  type AppTask[A] = RIO[AppEnvironment, A]
 
   val program: AppTask[Int] =
     ZIO.accessM { env =>

@@ -33,7 +33,7 @@ object AccountGateway {
       override def login(email: String, password: String): Result[Account] =
         ZIO.accessM { env =>
           for {
-            httpResponse <- env.httpClient.httpClient.get("/accounts/$email")
+            httpResponse <- env.httpClient.httpClient.get(s"/accounts/$email")
             result <- if (httpResponse.status == 200) ZIO(Account(email, "encrypted password"))
                       else ZIO.fail(new Exception(s"cannot create account: $httpResponse"))
           } yield result
