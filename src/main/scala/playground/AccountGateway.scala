@@ -2,6 +2,7 @@ package playground
 
 import zio.ZIO
 import zio.console.Console
+import zio.random.Random
 
 
 case class Account(email: String, encryptedPassword: String)
@@ -12,7 +13,7 @@ trait AccountGateway extends Serializable {
 }
 
 object AccountGateway {
-  type Result[A] = ZIO[InitializedHttpClient with Console, Throwable, A]
+  type Result[A] = ZIO[InitializedHttpClient with Console with Random, Throwable, A]
 
   trait Service[R] {
     def createAccount(email: String, password: String): Result[Account]

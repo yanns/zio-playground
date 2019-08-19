@@ -1,6 +1,7 @@
 package playground
 
 import zio.console.Console
+import zio.random.Random
 import zio.{RIO, ZIO, console}
 
 
@@ -12,7 +13,7 @@ object Main extends zio.App {
       success = ZIO.succeed
     )
 
-  type AppEnvironment = AccountGateway with InitializedHttpClient with Console
+  type AppEnvironment = AccountGateway with InitializedHttpClient with Console with Random
   type AppTask[A] = RIO[AppEnvironment, A]
 
   val program: AppTask[Int] =
@@ -23,7 +24,7 @@ object Main extends zio.App {
       } yield 0
     }
 
-  val completeProgram: ZIO[Console, Throwable, Int] = {
+  val completeProgram: ZIO[Console with Random, Throwable, Int] = {
     HttpClient(10).use { anHttpClient =>
       val liveEnv: AppEnvironment = newLiveEnv(anHttpClient)
       program.provide(liveEnv)
@@ -31,7 +32,7 @@ object Main extends zio.App {
   }
 
   private def newLiveEnv(anHttpClient: HttpClient): AppEnvironment =
-    new InitializedHttpClient with AccountGateway.Live with Console.Live {
+    new InitializedHttpClient with AccountGateway.Live with Console.Live with Random.Live {
       override val httpClient: InitializedHttpClient.Service[Any] = InitializedHttpClient.live(anHttpClient)
     }
 }
